@@ -1,0 +1,219 @@
+<!-- 若有代码 bug，请联系作者 qq: 1482763380 或者自行修改 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #app {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #app .step div {
+            margin-bottom: 10px;
+            width: 240px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+</head>
+
+<body>
+    <div id="app">
+        <h3>台数方案</h3>
+        <div class="first_step step">
+            <div>选择你心爱的水轮机类型：
+                <select @change='changeType' ref='sljType'>
+                    <option value="bhs">坝后式</option>
+                    <option value="yss">引水式</option>
+                </select>
+            </div>
+            <div>装机容量：<input v-model="zjrl">万千瓦</div>
+            <div>机组台数：<input v-model="jzts">台</div>
+            <div>单机容量：<input v-model="djrl" disabled>千瓦</div>
+            <!-- <div>单机容量(修正)：<input v-model="djrl" disabled>千瓦</div> -->
+        </div>
+        <h3>未修正的模型机尺寸</h3>
+        <div class="second_step step">
+            <div>限制流量：<input v-model="xzll"> m³/s </div>
+            <div>平均水头：<input v-model="pjst" @input='changeType'> m</div>
+            <div>设计水头：<input v-model="sjst" disabled> m</div>
+            <div>模型效率(限制工况)：<input v-model="mxxl_xz"> %</div>
+            <div>转轮直径：<input v-model="zlzj" disabled> m</div>
+            <div>转轮直径(标或非标)：<input v-model="zlzj_stan" disabled> m</div>
+        </div>
+        <h3>效率的计算</h3>
+        <div class="third_step step">
+            <div>模型效率(最优工况)：<input v-model="mxxl_zy"> %</div>
+            <div>模型机转轮直径：<input v-model="mxzlzj"> m</div>
+            <div>最大效率：<input v-model="zdxl" disabled> %</div>
+            <div>效率修正值：<input v-model="xlxzz" disabled> %</div>
+            <div>原型机效率：<input v-model="yxjxl" disabled> %</div>
+            <div>修正的D1：<input v-model="xzdD1" disabled> m</div>
+            <div>修正的D1(标或非标)：<input v-model="xzdD1_stan" disabled> m</div>
+            <div>单位转速：<input v-model="dwzs"> r/min</div>
+            <div>转速 n ：<input v-model="zs" disabled> r/min</div>
+            <div>修正转速 n ：<input v-model="xzzs" disabled> r/min</div>
+        </div>
+        <h3>三个水头对应的n11</h3>
+        <div class="fivth_step step">
+            <div>最大水头：<input v-model="zdst"> m</div>
+            <div>最小水头：<input v-model="zxst"> m</div>
+            <div>Hmax对应单位转速：<input v-model="hmaxzs" disabled> r/min</div>
+            <div>Hr对应单位转速：<input v-model="hrzs" disabled> r/min</div>
+            <div>Hmin对应单位转速：<input v-model="hminzs" disabled> r/min</div>
+        </div>
+        <h3>计算吸出高度</h3>
+        <div class="sixth_step step">
+            <div>设计工况点单位流量：<input v-model="dwll" disabled> m³/s</div>
+            <div>设计流量Qr：<input v-model="sjll" disabled> m³/s</div>
+            <h4>查图获取三个模型空化系数</h4>
+            <div>Hmin对应的σ：<input v-model="khxs1"></div>
+            <div>Hr对应的σ：<input v-model="khxs2"></div>
+            <div>Hmax对应的σ：<input v-model="khxs3"></div>
+            <div>空化系数修正值Δσ(P61)：<input v-model="khxsxzz"></div>
+            <div>安装高程(下游平均水位)：<input v-model="azgc"> m</div>
+            <h4>三个吸出高度</h4>
+            <div>最小水头 Hmin:Hs：<input v-model="xcgd1" disabled> m</div>
+            <div>设计水头 Hr:Hs：<input v-model="xcgd2" disabled> m</div>
+            <div>最大水头 Hmax:Hs：<input v-model="xcgd3" disabled> m</div>
+            <div>最大允许吸出高度Hs：<input v-model="xcgd" disabled> m</div>
+        </div>
+    </div>
+    <script>
+        const app = new Vue({
+            el: '#app',
+            data: {
+                zjrl: 63,
+                jzts: 3,
+                xzll: 0.68,
+                pjst: 126.1,
+                mxxl_xz: 89.5,
+                mxxl_zy: 91,
+                mxzlzj: 0.46,
+                standard: [3, 3.3, 3.8, 4.1, 4.5, 5, 5.5, 6, 6.5],
+                dwzs: 67.5,
+                zdst: 134,
+                zxst: 94.2,
+                tbzs: [100, 107.1, 115.4, 125, 136.4, 150, 166.7, 187.5, 214.3, 250, 300],
+                sjst: 1,
+                khxs1: 0.078,
+                khxs2: 0.065,
+                khxs3: 0.06,
+                khxsxzz: 0.02,
+                azgc: 622.5
+            },
+            computed: {
+                djrl() {
+                    var result = this.zjrl / this.jzts * 10000 / 0.98;
+                    return parseInt(result);
+                },
+                zlzj() {
+                    let top = this.djrl;
+                    let bottom = 9.81 * this.xzll * (this.sjst ** 1.5) * (this.mxxl_xz / 100 + 0.02);
+                    return parseFloat((top / bottom) ** 0.5).toFixed(2);
+                },
+                zlzj_stan() {
+                    for (var i = 0; i < this.standard.length; i++) {
+                        if (this.zlzj - this.standard[i] <= 0 && this.zlzj - this.standard[i] >= -0.2) {
+                            return this.standard[i];
+                        }
+                    }
+                    return this.zlzj - parseFloat(this.zlzj).toFixed(1) > 0 ? (parseFloat(this.zlzj).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.zlzj).toFixed(1);
+                },
+                zdxl() {
+                    let result = 1 - (1 - this.mxxl_zy / 100) * ((this.mxzlzj / this.zlzj_stan) ** 0.2);
+                    return parseFloat(result).toFixed(3) * 100
+                },
+                xlxzz() {
+                    return parseFloat(this.zdxl - this.mxxl_zy).toFixed(2);
+                },
+                yxjxl() {
+                    return parseFloat(this.xlxzz * 1 + this.mxxl_xz * 1).toFixed(1);
+                },
+                xzdD1() {
+                    let top = this.djrl;
+                    let bottom = 9.81 * this.xzll * (this.sjst ** 1.5) * (this.yxjxl / 100);
+                    return parseFloat((top / bottom) ** 0.5).toFixed(2);
+                },
+                xzdD1_stan() {
+                    for (var i = 0; i < this.standard.length; i++) {
+                        if (this.xzdD1 - this.standard[i] <= 0 && this.xzdD1 - this.standard[i] >= -0.2) {
+                            return this.standard[i];
+                        }
+                    }
+                    return this.xzdD1 - parseFloat(this.xzdD1).toFixed(1) > 0 ? (parseFloat(this.xzdD1).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.xzdD1).toFixed(1);
+                },
+                zs() {
+                    let top = this.dwzs * (this.pjst ** 0.5);
+                    return parseFloat(top / this.xzdD1_stan).toFixed(2);
+                },
+                hmaxzs() {
+                    return this.getzs(this.zdst);
+                },
+                hminzs() {
+                    return this.getzs(this.zxst);
+                },
+                hrzs() {
+                    return this.getzs(this.sjst);
+                },
+                xzzs() {
+                    for (var i = 0; i < this.tbzs.length - 1; i++) {
+                        if (this.zs > this.tbzs[i] && this.zs < this.tbzs[i + 1]) {
+                            return this.tbzs[i + 1];
+                        }
+                    }
+                },
+                dwll() {
+                    let bottom = 9.81 * this.yxjxl / 100 * (this.xzdD1_stan ** 2) * (this.sjst ** 1.5);
+                    return (this.djrl / bottom).toFixed(2);
+                },
+                sjll() {
+                    return (this.dwll * (this.xzdD1_stan ** 2) * (this.sjst ** 0.5)).toFixed(2);
+                },
+                xcgd1() {
+                    return this.getXcgd(this.khxs1, this.zxst);
+                },
+                xcgd2() {
+                    return this.getXcgd(this.khxs2, this.sjst);
+                },
+                xcgd3() {
+                    return this.getXcgd(this.khxs3, this.zdst);
+                },
+                xcgd() {
+                    var temp = 0;
+                    let array = [this.xcgd1, this.xcgd2, this.xcgd3];
+                    for (var i = 0; i < array.length; i++) {
+                        if (temp - array[i] > 0) {
+                            temp = array[i]
+                        }
+                    }
+                    return Math.floor(temp);
+                }
+            },
+            methods: {
+                getzs(hight) {
+                    let top = this.xzzs * this.xzdD1_stan;
+                    let bottom = hight ** 0.5;
+                    return parseFloat(top / bottom).toFixed(1)
+                },
+                changeType() {
+                    this.sjst = this.$refs.sljType.selectedIndex === 0 ? (this.pjst * 0.95).toFixed(2) : this.pjst;
+                },
+                getXcgd(khxs, st) {
+                    return (10 - this.azgc / 900 - ((khxs - 0) + (this.khxsxzz - 0)) * st).toFixed(3)
+                }
+            },
+            mounted() {
+                this.sjst = this.$refs.sljType.selectedIndex === 0 ? (this.pjst * 0.95).toFixed(2) : this.pjst;
+            }
+        })
+    </script>
+</body>
+
+</html>
