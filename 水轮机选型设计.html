@@ -19,6 +19,16 @@
             margin-bottom: 10px;
             width: 240px;
         }
+        
+        .fail {
+            background-color: rgb(255, 221, 233);
+            color: #f00;
+        }
+        
+        .success {
+            background-color: rgb(200, 252, 203);
+            color: rgb(13, 173, 13);
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
 </head>
@@ -56,6 +66,7 @@
             <div>原型机效率：<input v-model="yxjxl" disabled> %</div>
             <div>修正的D1：<input v-model="xzdD1" disabled> m</div>
             <div>修正的D1(标或非标)：<input v-model="xzdD1_stan" disabled> m</div>
+            <div>功率计算：<input :class="{'fail': xzgl < djrl, 'success': xzgl>djrl}" v-model="xzgl" disabled>千瓦</div>
             <div>单位转速：<input v-model="dwzs"> r/min</div>
             <div>转速 n ：<input v-model="zs" disabled> r/min</div>
             <div>修正转速 n ：<input v-model="xzzs" disabled> r/min</div>
@@ -89,24 +100,24 @@
         const app = new Vue({
             el: '#app',
             data: {
-                zjrl: 63,
+                zjrl: 48,
                 jzts: 3,
-                xzll: 0.68,
-                pjst: 126.1,
-                mxxl_xz: 89.5,
-                mxxl_zy: 91,
-                mxzlzj: 0.46,
+                xzll: 0.72,
+                pjst: 130,
+                mxxl_xz: 89.1,
+                mxxl_zy: 92.8,
+                mxzlzj: 0.35,
                 standard: [3, 3.3, 3.8, 4.1, 4.5, 5, 5.5, 6, 6.5],
-                dwzs: 67.5,
-                zdst: 134,
-                zxst: 94.2,
+                dwzs: 69,
+                zdst: 154,
+                zxst: 96,
                 tbzs: [100, 107.1, 115.4, 125, 136.4, 150, 166.7, 187.5, 214.3, 250, 300],
                 sjst: 1,
-                khxs1: 0.078,
-                khxs2: 0.065,
-                khxs3: 0.06,
+                khxs1: 0.08,
+                khxs2: 0.073,
+                khxs3: 0.074,
                 khxsxzz: 0.02,
-                azgc: 622.5
+                azgc: 646
             },
             computed: {
                 djrl() {
@@ -124,17 +135,17 @@
                             return this.standard[i];
                         }
                     }
-                    return this.zlzj - parseFloat(this.zlzj).toFixed(1) > 0 ? (parseFloat(this.zlzj).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.zlzj).toFixed(1);
+                    return this.zlzj - parseFloat(this.zlzj).toFixed(1) >= 0 ? (parseFloat(this.zlzj).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.zlzj).toFixed(1);
                 },
                 zdxl() {
                     let result = 1 - (1 - this.mxxl_zy / 100) * ((this.mxzlzj / this.zlzj_stan) ** 0.2);
-                    return parseFloat(result).toFixed(3) * 100
+                    return (parseFloat(result).toFixed(3) * 100).toFixed(2)
                 },
                 xlxzz() {
                     return parseFloat(this.zdxl - this.mxxl_zy).toFixed(2);
                 },
                 yxjxl() {
-                    return parseFloat(this.xlxzz * 1 + this.mxxl_xz * 1).toFixed(1);
+                    return parseFloat(this.xlxzz * 1 + this.mxxl_xz * 1).toFixed(2);
                 },
                 xzdD1() {
                     let top = this.djrl;
@@ -147,7 +158,7 @@
                             return this.standard[i];
                         }
                     }
-                    return this.xzdD1 - parseFloat(this.xzdD1).toFixed(1) > 0 ? (parseFloat(this.xzdD1).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.xzdD1).toFixed(1);
+                    return this.xzdD1 - parseFloat(this.xzdD1).toFixed(1) >= 0 ? (parseFloat(this.xzdD1).toFixed(1) - 0 + 0.1).toFixed(1) : parseFloat(this.xzdD1).toFixed(1);
                 },
                 zs() {
                     let top = this.dwzs * (this.pjst ** 0.5);
@@ -194,13 +205,16 @@
                         }
                     }
                     return Math.floor(temp);
+                },
+                xzgl() {
+                    return (9.81 * this.xzll * (this.xzdD1_stan ** 2) * (this.sjst ** 1.5)).toFixed(2)
                 }
             },
             methods: {
                 getzs(hight) {
                     let top = this.xzzs * this.xzdD1_stan;
                     let bottom = hight ** 0.5;
-                    return parseFloat(top / bottom).toFixed(1)
+                    return parseFloat(top / bottom).toFixed(2)
                 },
                 changeType() {
                     this.sjst = this.$refs.sljType.selectedIndex === 0 ? (this.pjst * 0.95).toFixed(2) : this.pjst;
